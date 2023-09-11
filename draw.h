@@ -7,6 +7,7 @@
 #include "cardLinked.h"
 #include "linkedMod.h"
 #include "saveHandler.h"
+#include <SDL_mixer.h>
 
 
 using namespace std;
@@ -36,7 +37,8 @@ private:
 		PREVIEW,
 		SETTINGS,
 		QUIT,
-		PLAYSELECT
+		CONTINU,
+		CARDSELECT
 	}GAME_STATE;
 
 	STATE next;
@@ -54,7 +56,18 @@ private:
 	SDL_Texture* gTextureButton = NULL;
 	SDL_Texture* gTextureButtonPres = NULL;
 	SDL_Texture* cardTexture = NULL;
-	SDL_Texture* cardPrevTexture = NULL;
+	SDL_Texture* buttTexture = NULL;
+	SDL_Texture* penisTexture = NULL;
+	SDL_Texture* selectTexture[10];
+	SDL_Texture* imgMain;
+
+
+
+
+	Mix_Music* gMusic = NULL;
+	Mix_Chunk* gSlap = NULL;
+
+	SDL_AudioSpec* wanted = NULL;
 
 
 	//Main loop flag
@@ -77,9 +90,10 @@ private:
 	int drawTextBlock(int, SDL_Rect, string, TTF_Font*, string*);
 	int drawCard();
 	int drawButton(SDL_Rect,string);
-	int playSelect();
-	int cardPreview(int);
+	int cardSelect();
+	int cardPreview(int, SDL_Texture*);
 	int settings();
+	int continu();
 
 	int values[3];
 	int xMouse;
@@ -87,18 +101,25 @@ private:
 	int offset;
 
 	bool update;
+	bool updatePreview;
+	bool showStats;
+	string stringMem;
 	TTF_Font* Sans;
 	TTF_Font* SansS;
 	TTF_Font* SansB;
 	SDL_Color white;
 	SDL_Color red;
 	SDL_Color green;
+	SDL_Color blau;
+	SDL_Color purple;
 	cardLinked* link;
 	linkedMod* tags;
 	int id;
 	int veld;
 	string text;
+	string saveName;
 	int startTime;
+	saveHandler * saveHandl;
 	bool cheats;
 
 	string* inputText;

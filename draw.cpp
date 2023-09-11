@@ -20,20 +20,23 @@ int draw::createWindow()
 		}
 		else
 		{
-			Sans = TTF_OpenFont("font/Sans.ttf", 30);
-			SansS = TTF_OpenFont("font/Sans.ttf", 15);
-			SansB = TTF_OpenFont("font/Sans.ttf", 45);
+			Sans = TTF_OpenFont("gameFiles/font/Sans.ttf", 30);
+			SansS = TTF_OpenFont("gameFiles/font/Sans.ttf", 15);
+			SansB = TTF_OpenFont("gameFiles/font/Sans.ttf", 45);
 			white = { 255, 255, 255 };
 			red = { 255, 0, 0 };
 			green = { 0, 255, 0 };
+			blau = { 0,191,255 };
+			purple = { 138,43,226 };
 			link = new cardLinked();
 			tags = new linkedMod();
+			saveHandl = new saveHandler(link);
 			veld = -1;
-			this->rands[0] = rand();
-			this->rands[1] = rand();
-			this->rands[2] = rand();
 			cardTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
-			cardPrevTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH/2, SCREEN_HEIGHT);
+			for (int i = 0; i < 10; i++)
+			{
+				selectTexture[i] = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+			}
 			values[0] = 0;
 			values[1] = 0;
 			values[2] = 0;
@@ -41,19 +44,23 @@ int draw::createWindow()
 			offset=0;
 			string* lastTextI=NULL;
 
+			//Mix_PlayMusic(gMusic, -1);
+
 			srand((unsigned)time(NULL));
+			this->rands[0] = rand();
+			this->rands[1] = rand();
+			this->rands[2] = rand();
 			if (Sans == NULL)
 			{
 				printf("%s/n", TTF_GetError());
 				return 1;
 			}
 
-			//Main loop flag
 			bool quit = false;
 
 			//Event handler
 			SDL_Event e;
-
+			SDL_EventState(SDL_DROPFILE,SDL_ENABLE);
 			//While application is running
 			while (!quit)
 			{
@@ -62,33 +69,31 @@ int draw::createWindow()
 				while (SDL_PollEvent(&e) != 0)
 				{
 					//User requests quit
-					if (e.type == SDL_QUIT)
+					switch (e.type)
 					{
+					case SDL_QUIT:
 						quit = true;
-					}else if (e.type == SDL_MOUSEMOTION)
-					{
+						break;
+					case SDL_MOUSEMOTION:
 						SDL_GetMouseState(&xMouse, &yMouse);
-						//printf("x:%d\ny:%d\n\n", xMouse, yMouse);
-					}else if (e.type == SDL_MOUSEBUTTONDOWN)
-					{
-						update=true;
-						mousePres=true;
-						//printf("x:%d\ny:%d\n\n", xMouse, yMouse);
-					}
-					else if (e.type == SDL_KEYDOWN )
-					{
+						break;
+					case SDL_MOUSEBUTTONDOWN:
+						update = true;
+						mousePres = true;
+						break;
+					case SDL_KEYDOWN:
 						update = true;
 						//Handle backspace
-						if (e.key.keysym.sym == SDLK_BACKSPACE && inputText->length() > 0 && offset>0)
+						if (e.key.keysym.sym == SDLK_BACKSPACE && inputText->length() > 0 && offset > 0)
 						{
 							//inputText->pop_back();
-							inputText->erase(offset-1, 1);
+							inputText->erase(offset - 1, 1);
 							offset--;
 						}
 						if (e.key.keysym.sym == SDLK_DELETE && inputText->length() > 0 && offset < inputText->length())
 						{
 							//inputText->pop_back();
-							inputText->erase(offset , 1);
+							inputText->erase(offset, 1);
 						}
 						if (e.key.keysym.sym == SDLK_LEFT && inputText->length() > 0)
 						{
@@ -100,8 +105,8 @@ int draw::createWindow()
 							//inputText->pop_back();
 							offset++;
 						}
-					}else if (e.type == SDL_TEXTINPUT)
-					{
+						break;
+					case SDL_TEXTINPUT:
 						update = true;
 						//Not copy or pasting
 						if (!(SDL_GetModState() & KMOD_CTRL && (e.text.text[0] == 'c' || e.text.text[0] == 'C' || e.text.text[0] == 'v' || e.text.text[0] == 'V')))
@@ -111,12 +116,22 @@ int draw::createWindow()
 							//*inputText += e.text.text;
 							offset++;
 						}
+						break;
+					case SDL_DROPFILE:
+						if (GAME_STATE == EDDITOR)
+						{
+							update = true;
+							link->get(id)->img = saveHandl->fileImport(string(e.drop.file));
+						}
+						SDL_free(e.drop.file);
+						break;
+					default:
+						break;
 					}
-
 				}
 				//Clear screen
-				//SDL_SetRenderDrawColor(gRenderer, 0xF7, 0xC0, 0xDC, 0xFF);
-				SDL_SetRenderDrawColor(gRenderer, 0xF7, 0xC0, 0x00, 0xFF);
+				SDL_SetRenderDrawColor(gRenderer, 0xF7, 0xC0, 0xDC, 0xFF);
+				//SDL_SetRenderDrawColor(gRenderer, 0xF7, 0xC0, 0x00, 0xFF);
 				SDL_RenderClear(gRenderer);
 			
 				velt_last = veld;
@@ -145,11 +160,14 @@ int draw::createWindow()
 				case PLAY:
 					play();
 					break;
-				case PLAYSELECT:
-					playSelect();
+				case CARDSELECT:
+					cardSelect();
 					break;
 				case SETTINGS:
 					settings();
+					break;
+				case CONTINU:
+					continu();
 					break;
 				case QUIT:
 					quit = true;
@@ -166,7 +184,7 @@ int draw::createWindow()
 				{
 					if (inputText != NULL)
 					{
-						offset = inputText->length();
+						offset = int(inputText->length());
 					}
 					lastTextI = inputText;
 				}
@@ -184,7 +202,7 @@ int draw::createWindow()
 				}
 				else if (inputText != NULL&&offset > inputText->length())
 				{
-					offset = inputText->length();
+					offset = int(inputText->length());
 				}
 
 				//Update screen
@@ -204,6 +222,20 @@ bool draw::init()
 {
 	//Initialization flag
 	bool success = true;
+
+
+	if (SDL_Init(SDL_INIT_AUDIO) < 0)
+	{
+		printf("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+		success = false;
+	}
+
+	//Initialize SDL_mixer
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+	{
+		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
 
 	//Initialize SDL
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -270,17 +302,47 @@ bool draw::loadMedia()
 	bool success = true;
 
 	//Load PNG texture
-	gTextureButton = loadTexture("textures/button.png");
+	gTextureButton = loadTexture("gameFiles/textures/button.png");
 	if (gTextureButton == NULL)
 	{
 		printf("Failed to load texture image1!\n");
 		success = false;
 	}
 
-	gTextureButtonPres = loadTexture("textures/button_pressed.png");
+	gTextureButtonPres = loadTexture("gameFiles/textures/button_pressed.png");
 	if (gTextureButtonPres == NULL)
 	{
 		printf("Failed to load texture image2!\n");
+		success = false;
+	}
+
+	buttTexture = loadTexture("gameFiles/textures/butt.png");
+	if (buttTexture == NULL)
+	{
+		printf("Failed to load texture image1!\n");
+		success = false;
+	}
+
+	penisTexture = loadTexture("gameFiles/textures/penis.png");
+	if (penisTexture == NULL)
+	{
+		printf("Failed to load texture image1!\n");
+		success = false;
+	}
+
+
+
+	gSlap = Mix_LoadWAV("gameFiles/audio/wet_slap.wav");
+	if (gSlap == NULL)
+	{
+		printf("Failed to load scratch sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	gMusic = Mix_LoadMUS("gameFiles/audio/Forest.wav");
+	if (gMusic == NULL)
+	{
+		printf("Failed to load beat music! SDL_mixer Error: %s\n", Mix_GetError());
 		success = false;
 	}
 
@@ -293,11 +355,27 @@ void draw::close()
 	SDL_DestroyTexture(gTextureButton);
 	SDL_DestroyTexture(gTextureButtonPres);
 	SDL_DestroyTexture(cardTexture);
-	SDL_DestroyTexture(cardPrevTexture);
+	SDL_DestroyTexture(buttTexture);
+	SDL_DestroyTexture(penisTexture);
+	SDL_DestroyTexture(imgMain);
+	for (int i = 0; i < 10; i++)
+	{
+		SDL_DestroyTexture(selectTexture[i]);
+		selectTexture[i] = NULL;
+	}
 	gTextureButton = NULL;
 	gTextureButtonPres = NULL;
 	cardTexture = NULL;
-	cardPrevTexture = NULL;
+	imgMain = NULL;
+
+	//Free the sound effects
+    Mix_FreeChunk( gSlap );
+    gSlap = NULL;
+    
+    //Free the music
+    Mix_FreeMusic( gMusic );
+    gMusic = NULL;
+
 
 	//Destroy window	
 	SDL_DestroyRenderer(gRenderer);
@@ -361,6 +439,10 @@ int draw::mainMenu()
 	stretchRect.y = y - stretchRect.h / 2;
 	if (drawButton(stretchRect, "Play"))
 	{
+		values[0] = 0;
+		values[1] = 0;
+		values[2] = 0;
+		tags->clear();
 		next = PLAY;
 		GAME_STATE = LOAD;
 	}
@@ -403,7 +485,7 @@ int draw::edditor()
 	card* temp;
 	if (link->get(id) == nullptr)
 	{
-		link->insertNode();
+		link->appandNode();
 		temp = link->get(id);
 	}
 	else
@@ -428,25 +510,34 @@ int draw::edditor()
 	SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
 	SDL_DestroyTexture(Message);
 
-
-	x = 1000;
 	stretchRect.h = h;
 	stretchRect.w = w;
-	stretchRect.x = x;
 	stretchRect.y = y;
-	if (drawButton(stretchRect, "Next"))
+	stretchRect.x = 1000;
+	if (temp->next == nullptr)
 	{
-		id++;
-		veld = -1;
+		if (drawButton(stretchRect, "new"))
+		{
+			id++;
+			veld = -1;
+			link->appandNode();
+			temp = temp->next;
+		}
 	}
+	else
+	{
+		if (drawButton(stretchRect, "next"))
+		{
+			id++;
+			veld = -1;
+			temp = temp->next;
+		}
+	}
+	
 
 	if (id != 0)
 	{
-		x = 10;
-		stretchRect.h = h;
-		stretchRect.w = w;
-		stretchRect.x = x;
-		stretchRect.y = y;
+		stretchRect.x = 10;
 		if (drawButton(stretchRect, "Back"))
 		{
 			id--;
@@ -454,23 +545,43 @@ int draw::edditor()
 		}
 	}
 
-	x = 300;
-	stretchRect.h = h;
-	stretchRect.w = w;
-	stretchRect.x = x;
-	stretchRect.y = y;
-	if (drawButton(stretchRect, "Save"))
+	stretchRect.x = 200;
+	if (drawButton(stretchRect, "Delete"))
 	{
-		GAME_STATE = EDDITORSAVE;
+		link->deleteNode(id);
+		return 0;
 	}
 
-	x = 700;
-	stretchRect.h = h;
-	stretchRect.w = w;
-	stretchRect.x = x;
-	stretchRect.y = y;
-	if (drawButton(stretchRect, "Exit"))
+	stretchRect.x = 400;
+	if (drawButton(stretchRect, "Save"))
 	{
+		saveHandl->save(saveName);
+		//GAME_STATE = EDDITORSAVE;
+	}
+
+
+
+	stretchRect.x = 600;
+	if (drawButton(stretchRect, "Select"))
+	{
+		updatePreview = true;
+		next = EDDITOR;
+		GAME_STATE = CARDSELECT;
+	}
+
+	stretchRect.x = 800;
+	if (drawButton(stretchRect, "Insert"))
+	{
+		link->insertNode(id);
+	}
+
+	stretchRect.h = 50;
+	stretchRect.w = 50;
+	stretchRect.x = SCREEN_WIDTH - 60;
+	stretchRect.y = 10;
+	if (drawButton(stretchRect, "X"))
+	{
+		saveHandl->save(saveName);
 		GAME_STATE = MAIN;
 	}
 
@@ -480,177 +591,93 @@ int draw::edditor()
 	stretchRect.x = 10;
 	stretchRect.y = 10;
 	stretchRect.h = 50;
-	stretchRect.w = 250;
-	if (temp->title.empty())
-	{
-		drawTextBlock(1, stretchRect, "title", Sans, &temp->title);
-	}
-	else
-	{
-		drawTextBlock(1, stretchRect, temp->title, Sans, &temp->title);
-	}
+	stretchRect.w = 300;
+	drawTextBlock(1, stretchRect, "title card", Sans, &temp->title);
 
+
+	stretchRect.x = 10;
+	stretchRect.y = 130;
+	stretchRect.h = 500;
+	stretchRect.w = 300;
+	drawTextBlock(2, stretchRect, "text for the card with x y z as random stats", SansS, &temp->text);
 
 	stretchRect.x = 10;
 	stretchRect.y = 70;
-	stretchRect.h = 250;
-	stretchRect.w = 250;
-	if (temp->text.empty())
-	{
-		drawTextBlock(2, stretchRect, "text for the card with x y z as random stats", SansS, &temp->text);
-	}
-	else
-	{
-		drawTextBlock(2, stretchRect, temp->text, SansS, &temp->text);
-	}
-
-
-	stretchRect.x = 10;
-	stretchRect.y = 330;
 	stretchRect.h = 50;
-	stretchRect.w = 250;
-	if (temp->img.empty())
-	{
-		drawTextBlock(3, stretchRect, "image name", Sans, &temp->img);
-	}
-	else
-	{
-		drawTextBlock(3, stretchRect, temp->img, Sans, &temp->img);
-	}
-
+	stretchRect.w = 300;
+	drawTextBlock(3, stretchRect, "image name", Sans, &temp->img);
 
 	for (int i = 0; i < 10; i++)
 	{
-		stretchRect.x = 5 + i%5*60;
-		stretchRect.y = 390 + i/5*60;
+		stretchRect.x = 330 + i/5*60;
+		stretchRect.y = 10 + i%5*60;
 		stretchRect.h = 50;
 		stretchRect.w = 50;
-		if (temp->conection[i].empty())
-		{
-			drawTextBlock(4 + i, stretchRect, "id", Sans, &temp->conection[i]);
-		}
-		else
-		{
-			drawTextBlock(4 + i, stretchRect, temp->conection[i], Sans, &temp->conection[i]);
-		}
+		drawTextBlock(4 + i, stretchRect, "id", Sans, &temp->conection[i]);
 		
 	}
 
 	for (int i = 0; i < 6; i++)
 	{
-		if (!text.empty() && veld == 14 + i)
-		{
-			if (!text.empty())
-			{
-				temp->ra[i] = stoi(text);
-			}
-			else
-			{
-				if (i % 2)
-				{
-					temp->ra[i] = "10";
-				}
-				else
-				{
-					temp->ra[i] = "0";
-				}
-			}
-			
-		}
-		stretchRect.x = 10 + i / 2 * 60;
-		stretchRect.y = 510 + i % 2 * 60;
+		stretchRect.x = 315 + i % 2 * 70;
+		stretchRect.y = 320 + i / 2 * 60;
 		stretchRect.h = 50;
-		stretchRect.w = 50;
-		if (temp->ra[i] == "0"  || temp->ra[i] == "10")
+		stretchRect.w = 60;
+		if (i % 2)
 		{
-			if (i % 2)
-			{
-				drawTextBlock(14 + i, stretchRect, "max", Sans, &temp->ra[i]);
-			}else
-			{
-				drawTextBlock(14 + i, stretchRect, "min",Sans, &temp->ra[i]);
-			}
-		}
-		else
+			drawTextBlock(14 + i, stretchRect, "max", Sans, &temp->ra[i]);
+		}else
 		{
-			drawTextBlock(14 + i, stretchRect, temp->ra[i], Sans, &temp->ra[i]);
+			drawTextBlock(14 + i, stretchRect, "min",Sans, &temp->ra[i]);
 		}
 	}
 
-	stretchRect.x = 190;
+	stretchRect.x = 330;
 	stretchRect.y = 510;
 	stretchRect.h = 50;
-	stretchRect.w = 60;
-	if (temp->bpm.empty())
-	{
-		drawTextBlock(20, stretchRect, "bpm", Sans, &temp->bpm);
-	}
-	else
-	{
-		drawTextBlock(20, stretchRect, temp->bpm, Sans, &temp->bpm);
-	}
+	stretchRect.w = 100;
+	drawTextBlock(20, stretchRect, "bpm", Sans, &temp->bpm);
 
-	stretchRect.x = 190;
+	stretchRect.x = 330;
 	stretchRect.y = 570;
 	stretchRect.h = 50;
-	stretchRect.w = 70;
-	if (temp->time.empty())
-	{
-		drawTextBlock(21, stretchRect, "time", Sans, &temp->time);
-	}
-	else
-	{
-		drawTextBlock(21, stretchRect, temp->time, Sans, &temp->time);
-	}
+	stretchRect.w = 100;
+	drawTextBlock(21, stretchRect, "time", Sans, &temp->time);
 
 	for (int i = 0; i < 6; i++)
 	{
-		stretchRect.x = 270;
-		stretchRect.y = 10 + i * 60;
+		stretchRect.x = SCREEN_WIDTH - 700 + i / 2 * 100;
+		stretchRect.y = 70 + i % 2 * 60;
 		stretchRect.h = 50;
-		stretchRect.w = 100;
-		if (temp->valeus[i].empty())
+		stretchRect.w = 80;
+		if (i % 2)
 		{
-			if (i % 2)
-			{
-				drawTextBlock(22 + i, stretchRect, ("need "+to_string(i/2+1)).c_str(), Sans, &temp->valeus[i]);
-			}
-			else
-			{
-				drawTextBlock(22 + i, stretchRect, ("give " + to_string(i / 2+1)).c_str(), Sans, &temp->valeus[i]);
-			}
+			drawTextBlock(22 + i, stretchRect, ("need "+to_string(i/2+1)).c_str(), Sans, &temp->valeus[i]);
 		}
 		else
 		{
-			drawTextBlock(22+i, stretchRect, temp->valeus[i], Sans, &temp->valeus[i]);
+			drawTextBlock(22 + i, stretchRect, ("give " + to_string(i / 2+1)).c_str(), Sans, &temp->valeus[i]);
 		}
 	}
 
 	for (int i = 0; i < 6; i++)
 	{
-		stretchRect.x = 380+i/2*130;
+		stretchRect.x = SCREEN_WIDTH - 390 + i/2*130;
 		stretchRect.y = 70 + i%2 * 60;
 		stretchRect.h = 50;
 		stretchRect.w = 120;
-		if (temp->tags[i].empty())
+		if (i % 2)
 		{
-			if (i % 2)
-			{
-				drawTextBlock(28 + i, stretchRect, "need tag", Sans, &temp->tags[i]);
-			}
-			else
-			{
-				drawTextBlock(28 + i, stretchRect, "give tag", Sans, &temp->tags[i]);
-			}
+			drawTextBlock(28 + i, stretchRect, "need tag", Sans, &temp->tags[i]);
 		}
 		else
 		{
-			drawTextBlock(28 + i, stretchRect, temp->tags[i], Sans, &temp->tags[i]);
+			drawTextBlock(28 + i, stretchRect, "give tag", Sans, &temp->tags[i]);
 		}
 	}
 
 	stretchRect.x = 10;
-	stretchRect.y = 630;
+	stretchRect.y = 640;
 	stretchRect.h = 50;
 	stretchRect.w = 100;
 	if (temp->random)
@@ -668,7 +695,7 @@ int draw::edditor()
 		}
 	}
 	stretchRect.x = 120;
-	stretchRect.y = 630;
+	stretchRect.y = 640;
 	stretchRect.h = 50;
 	stretchRect.w = 100;
 	string type= temp->type;
@@ -676,6 +703,12 @@ int draw::edditor()
 	{
 		temp->type =to_string((stoi(temp->type)+1)%2);
 	}
+
+	stretchRect.y = 10;
+	stretchRect.h = 50;
+	stretchRect.w = 250;
+	stretchRect.x = SCREEN_WIDTH - stretchRect.w - 70;
+	drawTextBlock(34, stretchRect, "title", Sans, &saveName);
 
 	stretchRect.x = SCREEN_WIDTH / 8 * 3;
 	stretchRect.y = SCREEN_HEIGHT / 8 * 2;
@@ -730,8 +763,7 @@ int draw::edditorSave()
 	stretchRect.y = SCREEN_HEIGHT - stretchRect.h -10;
 	if (drawButton(stretchRect,"Save"))
 	{
-		saveHandler save(link);
-		save.save(text);
+		saveHandl->save(text);
 		veld = -1;
 		text.clear();
 			
@@ -745,8 +777,8 @@ int draw::edditorSave()
 int draw::edditorMenu()
 {
 	int y=0;
-	int w = 300;
-	int h = 90;
+	const int w = 300;
+	const int h = 90;
 	SDL_Surface* surfaceText = TTF_RenderText_Solid(Sans, "Edditor", white);
 	SDL_Texture* Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
 	SDL_FreeSurface(surfaceText);
@@ -766,6 +798,7 @@ int draw::edditorMenu()
 	stretchRect.y = y - stretchRect.h / 2;
 	if (drawButton(stretchRect, "New"))
 	{
+		saveName = "new";
 		link->clear();
 		GAME_STATE = EDDITOR;
 	}
@@ -815,20 +848,39 @@ int draw::load()
 	stretchRect.y = SCREEN_HEIGHT - stretchRect.h - 10;
 	if (drawButton(stretchRect, "Load"))
 	{
-		saveHandler load(link);
-		if (!load.load(text))
+		if (!saveHandl->load(text))
 		{
 			veld = -1;
+			saveName = text;
+			if (filesystem::exists(text+"/save.txt") && next == PLAY)
+			{
+				GAME_STATE = CONTINU;
+			}
+			else
+			{
+				GAME_STATE = next;
+			}
 			text.clear();
-			GAME_STATE = next;
 		}
 	}
+
+	stretchRect.h = 50;
+	stretchRect.w = 50;
+	stretchRect.x = SCREEN_WIDTH - 60;
+	stretchRect.y = 10;
+	if (drawButton(stretchRect, "X"))
+	{
+		GAME_STATE = MAIN;
+	}
+
 
 	return 0;
 }
 
 int draw::play()
 {
+	SDL_Surface* surfaceText = NULL;
+	SDL_Texture* Message = NULL;
 	card* temp;
 
 	temp = link->get(id);
@@ -861,6 +913,55 @@ int draw::play()
 
 	SDL_Rect stretchRect;
 
+	stretchRect.h = 50;
+	stretchRect.w = 50;
+	stretchRect.x = SCREEN_WIDTH - 60;
+	stretchRect.y = 10;
+	if (drawButton(stretchRect, "|||"))
+	{
+		showStats = !showStats;
+	}
+	if (showStats)
+	{
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0x00);
+		stretchRect.h = SCREEN_HEIGHT-200;
+		stretchRect.w = 200;
+		stretchRect.x = SCREEN_WIDTH - stretchRect.w - 10;
+		stretchRect.y = 70;
+		SDL_RenderFillRect(gRenderer,&stretchRect);
+		stretchRect.y = 70;
+		for (int i = 0; i < 3; i++)
+		{
+			surfaceText = TTF_RenderText_Solid(SansS, to_string(values[i]).c_str(), white);
+			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+			SDL_FreeSurface(surfaceText);
+			SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
+			stretchRect.x = SCREEN_WIDTH- stretchRect.w-10;
+			stretchRect.y += stretchRect.h+10;
+			SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
+			SDL_DestroyTexture(Message);
+		}
+		for (int i = 0; tags->get(i)!=nullptr; i++)
+		{
+			surfaceText = TTF_RenderText_Solid(SansS, tags->get(i)->data.c_str(), white);
+			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+			SDL_FreeSurface(surfaceText);
+			SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
+			stretchRect.x = SCREEN_WIDTH - stretchRect.w - 10;
+			stretchRect.y += stretchRect.h + 10;
+			SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
+			SDL_DestroyTexture(Message);
+		}
+		stretchRect.h = 50;
+		stretchRect.w = 50;
+		stretchRect.x = SCREEN_WIDTH - 60;
+		stretchRect.y += stretchRect.h + 10;
+		if (drawButton(stretchRect, "X"))
+		{
+			GAME_STATE = MAIN;
+		}
+	}
+
 	if (time==0 || cheats || (int(SDL_GetTicks64()) - startTime) > time * 60000 && startTime > 0)
 	{
 		card* temp2 = NULL;
@@ -870,6 +971,7 @@ int draw::play()
 		stretchRect.y = SCREEN_HEIGHT - stretchRect.h - 10;
 		if (drawButton(stretchRect, "Next"))
 		{
+			saveHandl->stateSave(id,values,tags,saveName);
 			if(!temp->valeus[0].empty())values[0] = values[0] + stoi(temp->valeus[0]);
 			if (!temp->valeus[2].empty())values[1] = values[1] + stoi(temp->valeus[2]);
 			if (!temp->valeus[4].empty())values[2] = values[2] + stoi(temp->valeus[4]);
@@ -944,7 +1046,9 @@ int draw::play()
 			}
 			else
 			{
-				GAME_STATE = PLAYSELECT;
+				updatePreview = true;
+				next = PLAY;
+				GAME_STATE = CARDSELECT;
 			}
 		}
 	}
@@ -964,33 +1068,38 @@ int draw::play()
 	if (!temp->bpm.empty() && ((int(SDL_GetTicks64()) - startTime) < time * 60000 && startTime > 0 || time==0))
 	{
 		int tick = int(SDL_GetTicks64());
-		int p = 30000 / bpm;
-		stretchRect.w = 50;
-		stretchRect.h = 25;
-		stretchRect.x = int(SCREEN_WIDTH - 100 - abs(float(tick % p )/ p - 0.5) * 50);
-		stretchRect.y = SCREEN_HEIGHT - stretchRect.h / 2 - 100;
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderFillRect(gRenderer, &stretchRect);
+		int p = 60000 / bpm;
+		SDL_QueryTexture(penisTexture, NULL, NULL, &stretchRect.w, &stretchRect.h);
+		stretchRect.h = int(stretchRect.h * 0.4);
+		stretchRect.w = int(stretchRect.w * 0.4);
+		stretchRect.x = int(SCREEN_WIDTH - 80- abs(float(tick % p )/ p - 0.5) * 330);
+		if (tick % p >= 0 && tick % p <= 5)
+		{
+			Mix_PlayChannel(-1, gSlap, 0);
+		}
+		stretchRect.y = SCREEN_HEIGHT - stretchRect.h / 2 - 150;
+		SDL_RenderCopy(gRenderer, penisTexture, NULL,&stretchRect);
 
-		stretchRect.w = 50;
-		stretchRect.h = 50;
-		stretchRect.x = SCREEN_WIDTH - 150;
-		stretchRect.y = SCREEN_HEIGHT - stretchRect.w / 2 - 100;
-		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0x00);
-		SDL_RenderFillRect(gRenderer, &stretchRect);
+		SDL_QueryTexture(buttTexture, NULL, NULL, &stretchRect.w, &stretchRect.h);
+		stretchRect.h = int(stretchRect.h * 0.6);
+		stretchRect.w = int(stretchRect.w * 0.6);
+		stretchRect.x = SCREEN_WIDTH - 250;
+		stretchRect.y = SCREEN_HEIGHT - stretchRect.w / 2 - 150;
+		SDL_RenderCopy(gRenderer, buttTexture, NULL,&stretchRect);
 	}
 
 	if (time>0&&(int(SDL_GetTicks64()) - startTime) < time * 60000 && startTime > 0)
 	{
 		stretchRect.w = SCREEN_WIDTH - 50;
-		stretchRect.h = 50;
+		stretchRect.h = 20;
 		stretchRect.x = 10;
 		stretchRect.y = SCREEN_HEIGHT - 60;
 		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderFillRect(gRenderer, &stretchRect);
 
-		stretchRect.w = int(float(int(SDL_GetTicks64()) - startTime)/time*60000*stretchRect.w);
-		stretchRect.h = 50;
+		cout <<(int(SDL_GetTicks64()) - startTime) * stretchRect.w / (time * 60000)<<"\n";
+		stretchRect.w = (int(SDL_GetTicks64()) - startTime)*stretchRect.w/(time*60000);
+		stretchRect.h = 20;
 		stretchRect.x = 10;
 		stretchRect.y = SCREEN_HEIGHT - 60;
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
@@ -1010,19 +1119,16 @@ int draw::drawTextBlock(int veltI, SDL_Rect stretchRect, string defo, TTF_Font* 
 {
 	SDL_Surface* surfaceText;
 	SDL_Texture* Message;
-	int lineX = 0;
-	int lineY = 0;
+	int lineX = stretchRect.x;
+	int lineY = stretchRect.y;
+	int offsetC = 0;
+	SDL_Rect rect;
 	if (veld == veltI)
 	{
 		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
 		SDL_SetTextInputRect(&stretchRect);
 		SDL_StartTextInput();
 		inputText = pString;
-		/*surfaceText = TTF_RenderText_Blended_Wrapped(font, defo.substr(0, offset).c_str(), white, stretchRect.w);
-		Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
-		SDL_FreeSurface(surfaceText);
-		SDL_QueryTexture(Message, NULL, NULL, &lineX, &lineY);
-		SDL_RenderDrawLine(gRenderer, lineX + stretchRect.x, lineY + stretchRect.y, lineX + stretchRect.x, lineY + stretchRect.y - 20);*/
 	}
 	else
 	{
@@ -1034,12 +1140,169 @@ int draw::drawTextBlock(int veltI, SDL_Rect stretchRect, string defo, TTF_Font* 
 	{
 		veld = veltI;
 	}
-	surfaceText = TTF_RenderText_Blended_Wrapped(font, defo.c_str(), white, stretchRect.w);
-	Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
-	SDL_FreeSurface(surfaceText);
-	SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
-	SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
-	SDL_DestroyTexture(Message);
+	stretchRect.x = stretchRect.x + 2;
+	stretchRect.y = stretchRect.y + 2;
+	stretchRect.w = stretchRect.w - 4;
+	stretchRect.h = stretchRect.h - 4;
+	if (!pString->empty())
+	{
+		defo = *pString;
+	}
+	if(veld == veltI && !defo.empty())
+	{
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0x00);
+		while (defo.find(" ", 1) != string::npos)
+		{
+			surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+			SDL_FreeSurface(surfaceText);
+			SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+			if (lineX  + rect.w >= stretchRect.x + stretchRect.w)
+			{
+				lineX = stretchRect.x;
+				lineY += rect.h;
+				if (defo[0] == *" ")
+				{
+					offsetC++;
+					defo = defo.substr(1, defo.size());
+					surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+					SDL_DestroyTexture(Message);
+					Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+					SDL_FreeSurface(surfaceText);
+					SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+				}
+			}
+			rect.x = lineX;
+			rect.y = lineY;
+			lineX += rect.w;
+			SDL_RenderCopy(gRenderer, Message, NULL, &rect);
+			SDL_DestroyTexture(Message);
+			if (offsetC + defo.find(" ", 1) >= offset && offsetC <= offset && SDL_GetTicks64() / 500 % 2)
+			{
+				if (offsetC == offset)
+				{
+					SDL_RenderDrawLine(gRenderer, rect.x, rect.y, rect.x, rect.h + rect.y);
+				}
+				else
+				{
+					surfaceText = TTF_RenderText_Solid(font, defo.substr(0, offset - offsetC).c_str(), white);
+					SDL_DestroyTexture(Message);
+					Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+					SDL_FreeSurface(surfaceText);
+					SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+					SDL_RenderDrawLine(gRenderer, rect.w + rect.x, rect.y, rect.w + rect.x, rect.h + rect.y);
+				}
+				SDL_DestroyTexture(Message);
+			}
+
+			offsetC += int(defo.find(" ", 1));
+			defo = defo.substr(defo.find(" ",1), defo.length());
+			
+		}
+		surfaceText = TTF_RenderText_Solid(font, defo.c_str(), white);
+		Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+		SDL_FreeSurface(surfaceText);
+		SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+		if (lineX  + rect.w >= stretchRect.x + stretchRect.w)
+		{
+			lineX = stretchRect.x;
+			lineY += rect.h;
+			if (defo[0] == *" ")
+			{
+				offsetC++;
+				defo = defo.substr(1, defo.size());
+				surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+				SDL_DestroyTexture(Message);
+				Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+				SDL_FreeSurface(surfaceText);
+				SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+			}
+		}
+		rect.x = lineX;
+		rect.y = lineY;
+		lineX += rect.w;
+		SDL_RenderCopy(gRenderer, Message, NULL, &rect);
+		SDL_DestroyTexture(Message);
+		if (offsetC + defo.size() >= offset && offsetC <= offset && SDL_GetTicks64() / 500 % 2)
+		{
+			if (offsetC == offset)
+			{
+				SDL_RenderDrawLine(gRenderer, rect.x, rect.y, rect.x, rect.h + rect.y);
+			}
+			else
+			{
+				surfaceText = TTF_RenderText_Solid(font, defo.substr(0, offset - offsetC).c_str(), white);
+				SDL_DestroyTexture(Message);
+				Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+				SDL_FreeSurface(surfaceText);
+				SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+				SDL_RenderDrawLine(gRenderer, rect.w + rect.x, rect.y, rect.w + rect.x, rect.h + rect.y);
+			}
+			SDL_DestroyTexture(Message);
+		}
+	}
+	else
+	{
+		/*surfaceText = TTF_RenderText_Blended_Wrapped(font, defo.c_str(), white, stretchRect.w);
+		Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+		SDL_FreeSurface(surfaceText);
+		SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
+		SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
+		SDL_DestroyTexture(Message);*/
+
+		while (defo.find(" ", 1) != string::npos)
+		{
+			surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+			SDL_FreeSurface(surfaceText);
+			SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+			if (lineX + rect.w >= stretchRect.x + stretchRect.w)
+			{
+				lineX = stretchRect.x;
+				lineY += rect.h;
+				if (defo[0] == *" ")
+				{
+					defo = defo.substr(1, defo.size());
+					surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+					SDL_DestroyTexture(Message);
+					Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+					SDL_FreeSurface(surfaceText);
+					SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+				}
+			}
+			rect.x = lineX;
+			rect.y = lineY;
+			lineX += rect.w;
+			SDL_RenderCopy(gRenderer, Message, NULL, &rect);
+			SDL_DestroyTexture(Message);
+			defo = defo.substr(defo.find(" ", 1), defo.length());
+
+		}
+		surfaceText = TTF_RenderText_Solid(font, defo.c_str(), white);
+		Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+		SDL_FreeSurface(surfaceText);
+		SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+		if (lineX + rect.w >= stretchRect.x + stretchRect.w)
+		{
+			lineX = stretchRect.x;
+			lineY += rect.h;
+			if (defo[0] == *" ")
+			{
+				defo = defo.substr(1, defo.size());
+				surfaceText = TTF_RenderText_Solid(font, defo.substr(0, defo.find(" ", 1)).c_str(), white);
+				SDL_DestroyTexture(Message);
+				Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+				SDL_FreeSurface(surfaceText);
+				SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+			}
+		}
+		rect.x = lineX;
+		rect.y = lineY;
+		lineX += rect.w;
+		SDL_RenderCopy(gRenderer, Message, NULL, &rect);
+		SDL_DestroyTexture(Message);
+	}
+
 	return 0;
 }
 
@@ -1069,20 +1332,45 @@ int draw::drawCard()
 	SDL_FreeSurface(surfaceText);
 
 	SDL_Rect stretchRect;
-	SDL_Texture* png = NULL;
 	string textR = temp->text;
 
+	int raV[6];
+	for (int i = 0; i < 6; i++)
+	{
+		if (temp->ra[i].empty())
+		{
+			if (i % 2)
+			{
+				raV[i] = 10;
+			}
+			else
+			{
+				raV[i] = 0;
+			}
+		}
+		else
+		{
+			raV[i] = stoi(temp->ra[i]);
+		}
+	}
+	for (int i = 0; i < 3; i++)
+	{
+		if (raV[i*2]>= raV[i*2+1])
+		{
+			raV[i * 2 + 1] = raV[i * 2] + 1;
+		}
+	}
 	while (textR.find(" x ") != string::npos)
 	{
-		textR.replace(textR.find(" x "), 3, " " + to_string(rands[0] % (stoi(temp->ra[1]) - stoi(temp->ra[0])) + stoi(temp->ra[0])) + " ");
+		textR.replace(textR.find(" x "), 3, " " + to_string(rands[0] % (raV[1] - raV[0]) + raV[0]) + " ");
 	}
 	while (textR.find(" y ") != string::npos)
 	{
-		textR.replace(textR.find(" y "), 3, " " + to_string(rands[1] % (stoi(temp->ra[3]) - stoi(temp->ra[2])) + stoi(temp->ra[2])) + " ");
+		textR.replace(textR.find(" y "), 3, " " + to_string(rands[1] % (raV[3] - raV[2]) + raV[2]) + " ");
 	}
 	while (textR.find(" z ") != string::npos)
 	{
-		textR.replace(textR.find(" z "), 3, " " + to_string(rands[2] % (stoi(temp->ra[5]) - stoi(temp->ra[4])) + stoi(temp->ra[4])) + " ");
+		textR.replace(textR.find(" z "), 3, " " + to_string(rands[2] % (raV[5] - raV[4]) + raV[4]) + " ");
 	}
 
 
@@ -1102,19 +1390,23 @@ int draw::drawCard()
 	SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
 	SDL_DestroyTexture(Message);
 
-
-	png = loadTexture("textures/" + temp->img + ".png");
-	if (png == NULL)
+	if (temp->img!=stringMem)
 	{
-		png = loadTexture("textures/" + temp->img + ".jpg");
+		SDL_DestroyTexture(imgMain);
+		imgMain = loadTexture("textures/" + temp->img + ".png");
+		if (imgMain == NULL)
+		{
+			imgMain = loadTexture("textures/" + temp->img + ".jpg");
+		}
+		if (imgMain == NULL)
+		{
+			imgMain = loadTexture("textures/" + temp->img + ".jpeg");
+		}
 	}
-	if (png == NULL)
+	stringMem = temp->img;
+	if (!imgMain == NULL)
 	{
-		png = loadTexture("textures/" + temp->img + ".jpeg");
-	}
-	if (!png == NULL)
-	{
-		SDL_QueryTexture(png, NULL, NULL, &stretchRect.w, &stretchRect.h);
+		SDL_QueryTexture(imgMain, NULL, NULL, &stretchRect.w, &stretchRect.h);
 		switch (type)
 		{
 		case 1:
@@ -1150,14 +1442,9 @@ int draw::drawCard()
 		}
 		stretchRect.x = x;
 		stretchRect.y = y;
-		SDL_RenderCopy(gRenderer, png, NULL, &stretchRect);
-		SDL_DestroyTexture(png);
+		SDL_RenderCopy(gRenderer, imgMain, NULL, &stretchRect);
+		//SDL_DestroyTexture(imgMain);
 	}
-	/*stretchRect.w = w;
-	stretchRect.h = h;
-	stretchRect.x = x;
-	stretchRect.y = y;
-	SDL_RenderDrawRect(gRenderer,&stretchRect);*/
 
 	SDL_Color* collor=&white;
 	switch (type)
@@ -1175,58 +1462,87 @@ int draw::drawCard()
 		//stretchRect.h = 0;
 		break;
 	}
+	SDL_Rect rect;
+	int lineX = x;
+	int lineY = y;
+	bool newL = false;
+	// "\rtest\wtest"
+	// " test\wtest"
+	// " test test"
+	// " test test  "
+	// "test\rtest"
+	// "test\wtest"
+	// "\rtest\wtest"
+	// " test test  "
 
-	while(textR.find("\\n") != string::npos || textR.find("\\g") != string::npos || textR.find("\\w") != string::npos || textR.find("\\r") != string::npos)
+	textR += ' ';
+	while (textR.find(" ", 1) != string::npos || textR.find("\\") != string::npos)
 	{
-		if (textR.find("\\n") < textR.find("\\g") && textR.find("\\n") < textR.find("\\w") && textR.find("\\n") < textR.find("\\"))
+		while ( textR.find(" ", 1) == string::npos  || (textR.find(" ", 1) > textR.find("\\") && textR.find(" ", 1) != string::npos))
 		{
-			surfaceText = TTF_RenderText_Blended_Wrapped(SansS, textR.substr(0, textR.find("\\n")).c_str(), *collor, w);
-			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
-			SDL_FreeSurface(surfaceText);
-			SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
-			stretchRect.x = x;
-			stretchRect.y = y;
-			y = y + stretchRect.h;
-			SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
-			SDL_DestroyTexture(Message);
-			textR = textR.substr(textR.find("\\n") + 2, textR.length());
-		}
-		else
-		{
-			surfaceText = TTF_RenderText_Blended_Wrapped(SansS, textR.substr(0, textR.find("\\")).c_str(), *collor, w);
-			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
-			SDL_FreeSurface(surfaceText);
-			SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
-			stretchRect.x = x ;
-			stretchRect.y = y;
-			y = y + stretchRect.h;
-			SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
-			SDL_DestroyTexture(Message);
-			//cout << textR.at(textR.find("\\") + 1);
-			switch (textR.at(textR.find("\\")+1))
+
+			switch (textR.at(textR.find("\\") + 1))
 			{
-			case *"g":
+			case 'r':
+				collor = &red;
+				break;
+			case 'g':
 				collor = &green;
 				break;
-			case *"r":
-				collor = &red;
+			case 'b':
+				collor = &blau;
+				break;
+			case 'p':
+				collor = &purple;
+				break;
+			case 'n':
+				newL = true;
 				break;
 			default:
 				collor = &white;
 				break;
 			}
-			textR = textR.substr(textR.find("\\")+2, textR.length());
+			if (textR.size() > textR.find("\\") + 2)
+			{
+				textR.replace(textR.find("\\"), 2, "");
+			}
+			else
+			{
+				textR.replace(textR.find("\\"), 1, " ");
+			}
+		}
+		if(textR.find(" ", 1) != string::npos)
+		{
+			surfaceText = TTF_RenderText_Solid(SansS, textR.substr(0, textR.find(" ", 1)).c_str(), *collor);
+			Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+			SDL_FreeSurface(surfaceText);
+			SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+			if (lineX + rect.w >= x + w || newL)
+			{
+				newL = false;
+				lineX = x;
+				lineY += rect.h;
+				if (textR[0] == *" ")
+				{
+					textR = textR.substr(1, textR.size());
+					surfaceText = TTF_RenderText_Solid(SansS, textR.substr(0, textR.find(" ",1)).c_str(), *collor);
+					SDL_DestroyTexture(Message);
+					Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
+					SDL_FreeSurface(surfaceText);
+					SDL_QueryTexture(Message, NULL, NULL, &rect.w, &rect.h);
+				}
+			}
+			rect.x = lineX;
+			rect.y = lineY;
+			lineX += rect.w;
+			SDL_RenderCopy(gRenderer, Message, NULL, &rect);
+			SDL_DestroyTexture(Message);
+			if (textR.size() > 1)
+			{
+				textR = textR.substr(textR.find(" ", 1), textR.length());
+			}
 		}
 	}
-
-	surfaceText = TTF_RenderText_Blended_Wrapped(SansS, textR.c_str(), *collor, w);
-	Message = SDL_CreateTextureFromSurface(gRenderer, surfaceText);
-	SDL_FreeSurface(surfaceText);
-	SDL_QueryTexture(Message, NULL, NULL, &stretchRect.w, &stretchRect.h);
-	stretchRect.x = x;
-	stretchRect.y = y;
-	SDL_RenderCopy(gRenderer, Message, NULL, &stretchRect);
-	SDL_DestroyTexture(Message);
 
 	SDL_SetRenderTarget(gRenderer, nullptr);
 
@@ -1271,7 +1587,7 @@ int draw::drawButton(SDL_Rect stretchRect, string name)
 	return 0;
 }
 
-int draw::playSelect()
+int draw::cardSelect()
 {
 	SDL_Rect stretchRect;
 	int conC = 0;
@@ -1281,24 +1597,42 @@ int draw::playSelect()
 	int val0 = 0;
 	int val1 = 0;
 	int val2 = 0;
-	for (int i = 0; i < 10; i++)
+	if (next == PLAY)
 	{
-		if (!temp->conection[i].empty())
+		for (int i = 0; i < 10; i++)
 		{
-			temp2 = link->get(stoi(temp->conection[i]));
-			val0 = 0;
-			if (!temp2->valeus[1].empty()) { val0 = stoi(temp2->valeus[1]); }
-			val1 = 0;
-			if (!temp2->valeus[3].empty()) { val1 = stoi(temp2->valeus[3]); }
-			val2 = 0;
-			if (!temp2->valeus[5].empty()) { val2 = stoi(temp2->valeus[5]); }
-			if (val0 <= values[0] && val1 <= values[1] && val2 <= values[2] && tags->hasTag(temp2->tags[1]) && tags->hasTag(temp2->tags[3]) && tags->hasTag(temp2->tags[5]))
+			if (!temp->conection[i].empty())
 			{
-				opt[conC] = stoi(temp->conection[i]);
-				conC++;
+				temp2 = link->get(stoi(temp->conection[i]));
+				val0 = 0;
+				if (!temp2->valeus[1].empty()) { val0 = stoi(temp2->valeus[1]); }
+				val1 = 0;
+				if (!temp2->valeus[3].empty()) { val1 = stoi(temp2->valeus[3]); }
+				val2 = 0;
+				if (!temp2->valeus[5].empty()) { val2 = stoi(temp2->valeus[5]); }
+				if (val0 <= values[0] && val1 <= values[1] && val2 <= values[2] && tags->hasTag(temp2->tags[1]) && tags->hasTag(temp2->tags[3]) && tags->hasTag(temp2->tags[5]))
+				{
+					opt[conC] = stoi(temp->conection[i]);
+					conC++;
+				}
 			}
 		}
-
+	}
+	if (next == EDDITOR)
+	{
+		opt[0] = (id / 10)*10;
+		if (opt[0]+10 < link->max)
+		{
+			conC = 10;
+		}
+		else
+		{
+			conC = link->max - opt[0];
+		}
+		for (int i = 1; i < conC; i++)
+		{
+			opt[i] = opt[i - 1] + 1;
+		}
 	}
 	if (conC == 2)
 	{
@@ -1306,20 +1640,26 @@ int draw::playSelect()
 		stretchRect.y = 10;
 		stretchRect.w = SCREEN_WIDTH/2-30;
 		stretchRect.h = SCREEN_HEIGHT-20;
-		cardPreview(opt[0]);
-		SDL_RenderCopy(gRenderer, cardPrevTexture, NULL, &stretchRect);
+		if (updatePreview)
+		{
+			cardPreview(opt[0], selectTexture[0]);
+		}
+		SDL_RenderCopy(gRenderer, selectTexture[0], NULL, &stretchRect);
 		if (xMouse > (stretchRect.x) && xMouse < (stretchRect.x + stretchRect.w) && yMouse > stretchRect.y && yMouse < stretchRect.y + stretchRect.h && mousePres)
 		{
-			GAME_STATE = PLAY;
+			GAME_STATE = next;
 			id = opt[0];
 		}
 		stretchRect.x = SCREEN_WIDTH / 2 + 20;
 		stretchRect.w = SCREEN_WIDTH / 2 - 30;
-		cardPreview(opt[1]);
-		SDL_RenderCopy(gRenderer, cardPrevTexture, NULL, &stretchRect);
+		if (updatePreview)
+		{
+			cardPreview(opt[1], selectTexture[1]);
+		}
+		SDL_RenderCopy(gRenderer, selectTexture[1], NULL, &stretchRect);
 		if (xMouse > (stretchRect.x) && xMouse < (stretchRect.x + stretchRect.w) && yMouse > stretchRect.y && yMouse < stretchRect.y + stretchRect.h && mousePres)
 		{
-			GAME_STATE = PLAY;
+			GAME_STATE = next;
 			id = opt[1];
 		}
 	}
@@ -1331,36 +1671,61 @@ int draw::playSelect()
 			stretchRect.h = SCREEN_HEIGHT / 2 - 30;
 			stretchRect.x = 10+(10 + stretchRect.w)*(i%4);
 			stretchRect.y = 10+(10 + stretchRect.h)*(i/4);
-			cardPreview(opt[i]);
-			SDL_RenderCopy(gRenderer, cardPrevTexture, NULL, &stretchRect);
+			if (updatePreview)
+			{
+				cardPreview(opt[i], selectTexture[i]);
+			}
+			SDL_RenderCopy(gRenderer, selectTexture[i], NULL, &stretchRect);
 			if (xMouse > (stretchRect.x) && xMouse < (stretchRect.x + stretchRect.w) && yMouse > stretchRect.y && yMouse < stretchRect.y + stretchRect.h && mousePres)
 			{
-				GAME_STATE = PLAY;
+				GAME_STATE = next;
 				id = opt[i];
 			}
 		}
 	}
 	else
 	{
-		for (int i = 0; i < (conC); i++)
+		for (int i = 0; i < conC; i++)
 		{
-			stretchRect.w = SCREEN_WIDTH / 5 - 60;
-			stretchRect.h = SCREEN_HEIGHT / 5 - 40;
-			stretchRect.x = 10 + (10 + stretchRect.w) * (i % 5);
-			stretchRect.y = 10 + (10 + stretchRect.h) * (i / 5);
-			cardPreview(opt[i]);
-			SDL_RenderCopy(gRenderer, cardPrevTexture, NULL, &stretchRect);
+			stretchRect.w = SCREEN_WIDTH / 5;
+			stretchRect.h = int(SCREEN_HEIGHT / 2.5);
+			stretchRect.x = (stretchRect.w) * (i % 5);
+			stretchRect.y = (stretchRect.h) * (i / 5);
+			if (updatePreview)
+			{
+				cardPreview(opt[i], selectTexture[i]);
+			}
+			SDL_RenderCopy(gRenderer, selectTexture[i], NULL, &stretchRect);
 			if (xMouse > (stretchRect.x) && xMouse < (stretchRect.x + stretchRect.w) && yMouse > stretchRect.y && yMouse < stretchRect.y + stretchRect.h && mousePres)
 			{
-				GAME_STATE = PLAY;
+				GAME_STATE = next;
 				id = opt[i];
 			}
+		}
+	}
+	updatePreview = false;
+	stretchRect.h = 40;
+	stretchRect.w = 150;
+	stretchRect.y = SCREEN_HEIGHT - 50;
+	stretchRect.x = 1000;
+	if (opt[0]+10 < link->max && next == EDDITOR && drawButton(stretchRect, "Next"))
+	{
+		updatePreview = true;
+		id += 10;
+	}
+	if (opt[0] > 0)
+	{
+		stretchRect.x = 10;
+		if (next == EDDITOR && drawButton(stretchRect, "Back"))
+		{
+			updatePreview = true;
+			id -= 10;
 		}
 	}
 	return 0;
 }
 
-int draw::cardPreview(int prevId)
+int draw::cardPreview(int prevId,SDL_Texture* texture)
 {
 	//The final texture
 	card* temp = link->get(prevId);;
@@ -1370,7 +1735,7 @@ int draw::cardPreview(int prevId)
 		return 1;
 	}
 
-	SDL_SetRenderTarget(gRenderer, cardPrevTexture);
+	SDL_SetRenderTarget(gRenderer, texture);
 
 	SDL_SetRenderDrawColor(gRenderer, 0xF7, 0xC0, 0xDC, 0xFF);
 	SDL_RenderClear(gRenderer);
@@ -1475,6 +1840,36 @@ int draw::settings()
 	if (drawButton(stretchRect, "Back"))
 	{
 		GAME_STATE = MAIN;
+	}
+	return 0;
+}
+
+int draw::continu()
+{
+	SDL_Rect stretchRect;
+	int y = 0;
+	const int w = 300;
+	const int h = 90;
+
+	y = 300;
+	stretchRect.h = h;
+	stretchRect.w = w;
+	stretchRect.x = (SCREEN_WIDTH - stretchRect.w) / 2;
+	stretchRect.y = y - stretchRect.h / 2;
+	if (drawButton(stretchRect, "New"))
+	{
+		GAME_STATE = next;
+	}
+
+	y = 400;
+	stretchRect.h = h;
+	stretchRect.w = w;
+	stretchRect.x = (SCREEN_WIDTH - stretchRect.w) / 2;
+	stretchRect.y = y - stretchRect.h / 2;
+	if (drawButton(stretchRect, "Continu"))
+	{
+		saveHandl->stateLoad(&id,values,tags,saveName);
+		GAME_STATE = next;
 	}
 	return 0;
 }

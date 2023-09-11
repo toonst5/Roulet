@@ -24,6 +24,12 @@ int saveHandler::save(std::string dir)
 		MyFile << "title:" << temp->title << "\n";
 		MyFile << "img:" << temp->img << "\n";
 		MyFile << "text:" << temp->text << "\n";
+		MyFile << "min random value 1:" << temp->ra[0] << "\n";
+		MyFile << "max random value 1:" << temp->ra[1] << "\n";
+		MyFile << "min random value 2:" << temp->ra[2] << "\n";
+		MyFile << "max random value 2:" << temp->ra[3] << "\n";
+		MyFile << "min random value 3:" << temp->ra[4] << "\n";
+		MyFile << "max random value 3:" << temp->ra[5] << "\n";
 		MyFile << "conectio0:" << temp->conection[0] << "\n";
 		MyFile << "conectio1:" << temp->conection[1] << "\n";
 		MyFile << "conectio2:" << temp->conection[2] << "\n";
@@ -117,7 +123,7 @@ int saveHandler::load(std::string dir)
 	{
 		if (link->get(id) == nullptr)
 		{
-			link->insertNode();
+			link->appandNode();
 			temp = link->get(id);
 		}
 		else
@@ -213,7 +219,6 @@ int saveHandler::load(std::string dir)
 			myOutpue.close();
 		}
 
-
 		while (c != ':')
 		{
 			c = MyFile.get();
@@ -225,6 +230,21 @@ int saveHandler::load(std::string dir)
 			temp->text = temp->text + c;
 			c = MyFile.get();
 		}
+
+		for (int i = 0; i < 6; i++)
+		{
+			while (c != ':')
+			{
+				c = MyFile.get();
+			}
+			c = MyFile.get();
+			while (c != '\n')
+			{
+				temp->ra[i] = temp->ra[i] + c;
+				c = MyFile.get();
+			}
+		}
+
 
 		for (int i = 0; i < 10; i++)
 		{
@@ -302,5 +322,117 @@ int saveHandler::load(std::string dir)
 	}
 	MyFile.close();
 	return 0;
+}
+
+int saveHandler::stateSave(int id,int* values, linkedMod* tags, std::string dir)
+{
+	std::string save = "/save.txt";
+
+	std::ofstream MyFile((dir + save).c_str());
+	card* temp = link->get(0);
+	MyFile << "cardId" << ":" << id << "\n";
+	for (int i = 0; i < 3; i++)
+	{
+		MyFile << "V"<< i << ":" << values[i] << "\n";
+	}
+	for (int i = 0; tags->get(i) != nullptr; i++)
+	{
+		MyFile << "tag" << i << ":" << tags->get(i)->data << "\n";
+	}
+	MyFile << "#";
+	return 0;
+}
+
+int saveHandler::stateLoad(int* id,int* values, linkedMod* tags, std::string dir)
+{
+	std::string save = "/save.txt";
+	if (!fs::is_directory(dir) || !fs::exists(dir)) 
+	{
+		return 1;
+	}
+
+	std::ifstream MyFile((dir + save).c_str(), std::ifstream::in);
+	char c = MyFile.get();
+
+	while (c != ':')
+	{
+		c = MyFile.get();
+	}
+	c = MyFile.get();
+	*id = 0;
+	while (c != '\n')
+	{
+		*id = *id * 10 + int(c - '0');
+		c = MyFile.get();
+	}
+
+	c = MyFile.get();
+	for (int i = 0; i < 3; i++)
+	{
+		while (c != ':')
+		{
+			c = MyFile.get();
+		}
+		c = MyFile.get();
+		while (c != '\n')
+		{
+			values[i] = values[i] * 10 + int(c-'0');
+			c = MyFile.get();
+		}
+	}
+	int y = 0;
+	while (1)
+	{
+		while (c != ':')
+		{
+			if (c == '#')
+			{
+				return 0;
+			}
+			c = MyFile.get();
+		}
+		c = MyFile.get();
+		while (c != '\n')
+		{
+			if (tags->get(y) == NULL)
+			{
+				tags->insertNode("");
+			}
+			tags->get(y)->data += c;
+			c = MyFile.get();
+		}
+		y++;
+	}
+		
+	return 0;
+}
+
+std::string saveHandler::fileImport(std::string dirO)
+{
+	int slasP = -1;
+	int dotP = 0;
+	while (dirO.find("\\", slasP + 1) != std::string::npos)
+	{
+		slasP=int(dirO.find("\\", slasP + 1));
+	}
+	dotP = int(dirO.find("."));
+
+	std::string dest = "textures\\" + dirO.substr(slasP + 1, dirO.size()- slasP - 1);
+	if (!std::filesystem::exists(dest))
+	{
+		std::ifstream ifs(dirO, std::ios::binary);
+		std::ofstream myOutpue;
+		char buffer[1024];
+		myOutpue.open(dest, std::ios::binary);
+		while (ifs.read(buffer, sizeof(buffer)))
+		{
+			myOutpue.write(buffer, ifs.gcount());
+		}
+		myOutpue.write(buffer, ifs.gcount());
+		myOutpue.close();
+
+	}
+
+	return  dirO.substr(slasP + 1, dotP - slasP - 1);
 }
 

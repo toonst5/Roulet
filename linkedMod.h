@@ -28,6 +28,7 @@ public:
     void insertNode(std::string);
     int deleteNode(std::string);
     int hasTag(std::string);
+    Node* get(int);
 private:
     Node* head;
 };

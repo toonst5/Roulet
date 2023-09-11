@@ -8,10 +8,17 @@ int linkedMod::clear()
     {
         return 1;
     }
+    if (head->next == NULL)
+    {
+        delete(head);
+        head = NULL;
+        return 0;
+    }
 
     do
     {
         temp = head;
+        temp2 = temp;
         while (temp->next != NULL)
         {
             temp2 = temp;
@@ -21,27 +28,21 @@ int linkedMod::clear()
         temp2->next=NULL;
     } while (temp2 != head);
     delete(head);
-
+    head = NULL;
     return 0;
 }
 
 void linkedMod::insertNode(std::string data)
 {
     Node* temp = head;
-    if (data.empty())
+
+    while (temp != NULL && !data.empty())
     {
-        return;
-    }
-    else
-    {
-        while (temp != NULL)
+        if (temp->data == data)
         {
-            if (temp->data == data)
-            {
-                return;
-            }
-            temp = temp->next;
+            return;
         }
+        temp = temp->next;
     }
 
     Node* newNode = new Node(data);
@@ -117,4 +118,26 @@ int linkedMod::hasTag(std::string tag)
         return 1;
     }
     return 0;
+}
+
+Node* linkedMod::get(int id)
+{
+
+    if (this->head == NULL)
+    {
+        return nullptr;
+    }
+
+    Node* temp = this->head;
+    int idC = 0;
+    while (idC != id)
+    {
+        if (temp->next == NULL)
+        {
+            return nullptr;
+        }
+        temp = temp->next;
+        idC++;
+    }
+    return temp;
 }
